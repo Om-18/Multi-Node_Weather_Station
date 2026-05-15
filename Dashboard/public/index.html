@@ -3,139 +3,422 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Real-time multi-node weather station dashboard — live sensor data from ESP32 via LoRa" />
   <title>Weather Station Dashboard</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header>
-    <h1>Weather Station Dashboard</h1>
-    <p>Connect to your ESP32-S3 receiver via HTTP and display live sensor readings.</p>
+    <h1>⛅ Weather Station Dashboard</h1>
+    <p>Live sensor data from ESP32 nodes via LoRa &mdash; refreshes every 2 seconds</p>
   </header>
 
   <main>
-    <section class="controls">
-      <input 
-        type="text" 
-        id="receiverIp" 
-        placeholder="Enter receiver IP (e.g., 192.168.1.100)" 
-        value="192.168.1.100"
-      />
+    <!-- Connection Controls -->
+    <section class="controls" id="controlsSection">
+      <input type="text" id="receiverIp" placeholder="Enter receiver IP (e.g. 192.168.1.100)" value="192.168.137.242" />
       <button id="connectButton">Connect</button>
       <span id="status">Disconnected</span>
     </section>
 
-    <section class="cards">
-      <article class="card">
+    <!-- Live Status Bar -->
+    <section class="status-bar" id="statusBar">
+      <div class="status-chip">
+        <div class="dot" id="linkDot"></div>
+        <span>LoRa Link</span>
+      </div>
+      <div class="status-chip">
+        <span>Node:</span>
+        <strong id="nodeIdDisplay">--</strong>
+      </div>
+      <div class="status-chip">
+        <span>RSSI:</span>
+        <strong id="rssiDisplay">-- dBm</strong>
+      </div>
+      <div class="status-chip">
+        <span>SNR:</span>
+        <strong id="snrDisplay">-- dB</strong>
+      </div>
+      <div class="status-chip">
+        <span>Samples:</span>
+        <strong id="sampleCount">0</strong>
+      </div>
+    </section>
+
+    <!-- Sensor Data Cards -->
+    <section class="cards" id="cardsSection">
+      <article class="card temp">
+        <div class="card-icon">🌡️</div>
         <h2>Temperature</h2>
-        <p id="temperature">-- °C</p>
+        <p><span class="value" id="temperature">--</span><span class="unit">°C</span></p>
       </article>
-      <article class="card">
+
+      <article class="card press">
+        <div class="card-icon">🔵</div>
         <h2>Pressure</h2>
-        <p id="pressure">-- hPa</p>
+        <p><span class="value" id="pressure">--</span><span class="unit">hPa</span></p>
       </article>
-      <article class="card">
+
+      <article class="card humid">
+        <div class="card-icon">💧</div>
         <h2>Humidity</h2>
-        <p id="humidity">-- %</p>
+        <p><span class="value" id="humidity">--</span><span class="unit">%</span></p>
       </article>
-      <article class="card">
+
+      <article class="card gas">
+        <div class="card-icon">🫧</div>
         <h2>Gas Resistance</h2>
-        <p id="gas">-- Ω</p>
+        <p><span class="value" id="gas">--</span><span class="unit">Ω</span></p>
       </article>
-      <article class="card">
+
+      <article class="card mag">
+        <div class="card-icon">🧲</div>
         <h2>Magnetic Field</h2>
-        <p id="magnetic">-- µT</p>
+        <div class="sub-values" id="magneticValues">
+          <span>X: <strong id="magX">--</strong></span>
+          <span>Y: <strong id="magY">--</strong></span>
+          <span>Z: <strong id="magZ">--</strong></span>
+        </div>
       </article>
     </section>
 
+    <!-- ────────── Trend Graphs ────────── -->
+    <section class="charts-section">
+      <h2 class="section-title">📈 Sensor Trends</h2>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>Temperature (°C)</h3>
+          <canvas id="chartTemp"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Humidity (%)</h3>
+          <canvas id="chartHumid"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Pressure (hPa)</h3>
+          <canvas id="chartPress"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Gas Resistance (Ω)</h3>
+          <canvas id="chartGas"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Connection Log -->
     <section class="log-section">
-      <h2>Connection Log</h2>
+      <h2>📋 Connection Log</h2>
       <pre id="log">Ready to connect. Enter the receiver IP address and click Connect.</pre>
     </section>
   </main>
 
   <script>
-    const connectButton = document.getElementById('connectButton');
+    // ============================================================
+    //  DOM references
+    // ============================================================
+    const connectButton   = document.getElementById('connectButton');
     const receiverIpInput = document.getElementById('receiverIp');
-    const statusEl = document.getElementById('status');
-    const logEl = document.getElementById('log');
+    const statusEl        = document.getElementById('status');
+    const logEl           = document.getElementById('log');
+    const linkDot         = document.getElementById('linkDot');
 
     const fields = {
-      temperature: document.getElementById('temperature'),
-      pressure: document.getElementById('pressure'),
-      humidity: document.getElementById('humidity'),
-      gas: document.getElementById('gas'),
-      magnetic: document.getElementById('magnetic')
+      temperature : document.getElementById('temperature'),
+      pressure    : document.getElementById('pressure'),
+      humidity    : document.getElementById('humidity'),
+      gas         : document.getElementById('gas'),
+      magX        : document.getElementById('magX'),
+      magY        : document.getElementById('magY'),
+      magZ        : document.getElementById('magZ'),
     };
 
-    let isConnected = false;
-    let fetchInterval;
-    let receiverUrl;
+    const meta = {
+      nodeId      : document.getElementById('nodeIdDisplay'),
+      rssi        : document.getElementById('rssiDisplay'),
+      snr         : document.getElementById('snrDisplay'),
+      sampleCount : document.getElementById('sampleCount'),
+    };
 
-    connectButton.addEventListener('click', () => {
-      const ip = receiverIpInput.value.trim();
-      if (!ip) {
-        log('Please enter a valid IP address');
-        return;
+    // ============================================================
+    //  Session history store (Persisted in localStorage)
+    // ============================================================
+    const MAX_HISTORY = 200;           // keep last 200 samples
+    const STORE_KEY = 'weather_station_history';
+    
+    let history = {
+      labels:      [],
+      temperature: [],
+      pressure:    [],
+      humidity:    [],
+      gas:         [],
+    };
+
+    function loadHistory() {
+      try {
+        const stored = localStorage.getItem(STORE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && Array.isArray(parsed.labels)) {
+            history = parsed;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load history', e);
       }
+    }
+
+    function saveHistory() {
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify(history));
+      } catch (e) {
+        console.error('Failed to save history', e);
+      }
+    }
+    
+    loadHistory(); // Load on start
+
+    // ============================================================
+    //  Chart.js setup
+    // ============================================================
+    const chartOpts = (color, unit) => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(17,24,39,0.9)',
+          titleColor: '#e2e8f0',
+          bodyColor: '#e2e8f0',
+          borderColor: color,
+          borderWidth: 1,
+          callbacks: { label: ctx => `${ctx.parsed.y} ${unit}` }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 10 } },
+          grid:  { color: 'rgba(148,163,184,0.08)' }
+        },
+        y: {
+          ticks: { color: '#64748b', font: { size: 10 } },
+          grid:  { color: 'rgba(148,163,184,0.08)' }
+        }
+      }
+    });
+
+    function makeDataset(color, data) {
+      return {
+        data: data || [],
+        borderColor: color,
+        backgroundColor: color + '18',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: true,
+        tension: 0.35,
+      };
+    }
+
+    const chartTemp  = new Chart(document.getElementById('chartTemp'),  { type:'line', data:{ labels:history.labels, datasets:[makeDataset('#f97316', history.temperature)] }, options: chartOpts('#f97316','°C')  });
+    const chartHumid = new Chart(document.getElementById('chartHumid'), { type:'line', data:{ labels:history.labels, datasets:[makeDataset('#22d3ee', history.humidity)] }, options: chartOpts('#22d3ee','%')   });
+    const chartPress = new Chart(document.getElementById('chartPress'), { type:'line', data:{ labels:history.labels, datasets:[makeDataset('#38bdf8', history.pressure)] }, options: chartOpts('#38bdf8','hPa') });
+    const chartGas   = new Chart(document.getElementById('chartGas'),   { type:'line', data:{ labels:history.labels, datasets:[makeDataset('#a78bfa', history.gas)] }, options: chartOpts('#a78bfa','Ω')   });
+    
+    // Update sample count on load
+    meta.sampleCount.textContent = history.labels.length;
+
+    function pushHistory(data) {
+      const now = new Date().toLocaleTimeString();
+      history.labels.push(now);
+      history.temperature.push(data.temperature ?? null);
+      history.pressure.push(data.pressure ?? null);
+      history.humidity.push(data.humidity ?? null);
+      history.gas.push(data.gasResistance ?? null);
+
+      // Trim if over limit
+      if (history.labels.length > MAX_HISTORY) {
+        history.labels.shift();
+        history.temperature.shift();
+        history.pressure.shift();
+        history.humidity.shift();
+        history.gas.shift();
+      }
+      
+      saveHistory();
+
+      // Update charts
+      chartTemp.data.labels  = history.labels;
+      chartTemp.data.datasets[0].data  = history.temperature;
+      chartHumid.data.labels = history.labels;
+      chartHumid.data.datasets[0].data = history.humidity;
+      chartPress.data.labels = history.labels;
+      chartPress.data.datasets[0].data = history.pressure;
+      chartGas.data.labels   = history.labels;
+      chartGas.data.datasets[0].data   = history.gas;
+
+      chartTemp.update();
+      chartHumid.update();
+      chartPress.update();
+      chartGas.update();
+
+      meta.sampleCount.textContent = history.labels.length;
+    }
+
+    // ============================================================
+    //  State
+    // ============================================================
+    let isConnected     = false;
+    let fetchInterval   = null;
+    let receiverUrl     = '';
+    let failCount       = 0;
+    let fetchController = null;
+    const MAX_FAILS     = 5;
+
+    // ============================================================
+    //  Connect / Disconnect
+    // ============================================================
+    connectButton.addEventListener('click', () => {
+      if (isConnected) { disconnect(); return; }
+      const ip = receiverIpInput.value.trim();
+      if (!ip) { log('⚠ Please enter a valid IP address'); return; }
       receiverUrl = `http://${ip}`;
       startFetching();
     });
 
     function startFetching() {
       isConnected = true;
-      statusEl.textContent = 'Connecting...';
-      log(`Connecting to ${receiverUrl}...`);
+      failCount = 0;
+      connectButton.textContent = 'Disconnect';
+      connectButton.classList.add('disconnect');
+      statusEl.textContent = 'Connecting…';
+      statusEl.className = 'connecting';
+      log(`Connecting to ${receiverUrl}…`);
 
-      fetchData();
-      fetchInterval = setInterval(fetchData, 2000);
+      checkHealth().then(ok => {
+        if (!isConnected) return;
+        if (ok) {
+          log('✔ Receiver is reachable');
+          fetchData();
+          fetchInterval = setInterval(fetchData, 2000);
+        } else {
+          log('✖ Could not reach receiver — check IP and WiFi');
+          disconnect();
+        }
+      });
+    }
+
+    function disconnect() {
+      isConnected = false;
+      if (fetchController) { fetchController.abort(); fetchController = null; }
+      if (fetchInterval)   { clearInterval(fetchInterval); fetchInterval = null; }
+      failCount = 0;
+      connectButton.textContent = 'Connect';
+      connectButton.classList.remove('disconnect');
+      statusEl.textContent = 'Disconnected';
+      statusEl.className = '';
+      linkDot.classList.remove('active');
+      log('Disconnected.');
+    }
+
+    // ============================================================
+    //  Data Fetching
+    // ============================================================
+    async function checkHealth() {
+      try {
+        const ctrl  = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 4000);
+        const r     = await fetch(`${receiverUrl}/api/health`, { signal: ctrl.signal });
+        clearTimeout(timer);
+        return r.ok;
+      } catch { return false; }
     }
 
     async function fetchData() {
+      if (!isConnected) return;
+      if (fetchController) fetchController.abort();
+      fetchController = new AbortController();
+      const signal = fetchController.signal;
+
       try {
-        const response = await fetch(`${receiverUrl}/api/sensor-data`);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
+        const response = await fetch(`${receiverUrl}/api/sensor-data`, { signal });
+        if (!isConnected) return;
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
         const data = await response.json();
+        if (!isConnected) return;
+
+        failCount = 0;
         updateDashboard(data);
+        pushHistory(data);
+
         if (statusEl.textContent !== 'Connected') {
           statusEl.textContent = 'Connected';
-          statusEl.classList.add('connected');
-          log('Connected to receiver!');
+          statusEl.className   = 'connected';
+          linkDot.classList.add('active');
+          log('✔ Connected to receiver!');
         }
       } catch (error) {
-        if (isConnected) {
-          statusEl.textContent = 'Connection Error';
-          statusEl.classList.remove('connected');
-          log(`Error: ${error.message}`);
-          isConnected = false;
-          clearInterval(fetchInterval);
+        if (error.name === 'AbortError') return;
+        if (!isConnected) return;
+        failCount++;
+        log(`⚠ Fetch error (${failCount}/${MAX_FAILS}): ${error.message}`);
+        if (failCount >= MAX_FAILS) {
+          log('✖ Too many consecutive failures — auto-disconnecting');
+          disconnect();
         }
       }
+    }
+
+    // ============================================================
+    //  Update Dashboard UI
+    // ============================================================
+    function flashEl(el) {
+      el.classList.remove('flash');
+      void el.offsetWidth;
+      el.classList.add('flash');
     }
 
     function updateDashboard(data) {
       if (data.temperature !== undefined) {
-        fields.temperature.textContent = `${data.temperature.toFixed(1)} °C`;
+        const v = data.temperature.toFixed(1);
+        if (fields.temperature.textContent !== v) { fields.temperature.textContent = v; flashEl(fields.temperature); }
       }
       if (data.pressure !== undefined) {
-        fields.pressure.textContent = `${data.pressure.toFixed(1)} hPa`;
+        const v = data.pressure.toFixed(1);
+        if (fields.pressure.textContent !== v) { fields.pressure.textContent = v; flashEl(fields.pressure); }
       }
       if (data.humidity !== undefined) {
-        fields.humidity.textContent = `${data.humidity.toFixed(1)} %`;
+        const v = data.humidity.toFixed(1);
+        if (fields.humidity.textContent !== v) { fields.humidity.textContent = v; flashEl(fields.humidity); }
       }
       if (data.gasResistance !== undefined) {
-        fields.gas.textContent = `${data.gasResistance.toFixed(0)} Ω`;
+        const v = data.gasResistance.toFixed(0);
+        if (fields.gas.textContent !== v) { fields.gas.textContent = v; flashEl(fields.gas); }
       }
+
       if (data.magnetic) {
-        const { x, y, z } = data.magnetic;
-        fields.magnetic.textContent = `X:${x.toFixed(1)} Y:${y.toFixed(1)} Z:${z.toFixed(1)}`;
+        fields.magX.textContent = data.magnetic.x.toFixed(1);
+        fields.magY.textContent = data.magnetic.y.toFixed(1);
+        fields.magZ.textContent = data.magnetic.z.toFixed(1);
       }
+
+      if (data.nodeId !== undefined) meta.nodeId.textContent = `Node ${data.nodeId}`;
+      if (data.rssi !== undefined)   meta.rssi.textContent   = `${data.rssi} dBm`;
+      if (data.snr !== undefined)    meta.snr.textContent    = `${data.snr} dB`;
+
+      if (data.dataReceived) { linkDot.classList.add('active'); }
+      else                   { linkDot.classList.remove('active'); }
     }
 
+    // ============================================================
+    //  Logger
+    // ============================================================
     function log(message) {
-      const timestamp = new Date().toLocaleTimeString();
-      logEl.textContent += `[${timestamp}] ${message}\n`;
+      const ts = new Date().toLocaleTimeString();
+      logEl.textContent += `\n[${ts}] ${message}`;
       logEl.scrollTop = logEl.scrollHeight;
     }
   </script>
