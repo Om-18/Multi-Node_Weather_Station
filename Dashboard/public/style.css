@@ -1,0 +1,120 @@
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f3f7fb;
+  color: #1f2937;
+}
+
+header {
+  padding: 24px;
+  background: #0f172a;
+  color: #f8fafc;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+header p {
+  margin: 8px 0 0;
+  color: #cbd5e1;
+}
+
+main {
+  max-width: 1040px;
+  margin: 24px auto;
+  padding: 0 16px 32px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.controls input {
+  padding: 12px 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 1rem;
+  flex: 1;
+  min-width: 200px;
+}
+
+.controls input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.controls button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.controls button:hover {
+  background: #1d4ed8;
+}
+
+.controls span {
+  font-weight: 600;
+}
+
+.controls span.connected {
+  color: #16a34a;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: #334155;
+}
+
+.card p {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.log-section {
+  margin-top: 28px;
+}
+
+.log-section h2 {
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+}
+
+pre {
+  height: 220px;
+  overflow-y: auto;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 16px;
+  border-radius: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Station Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Weather Station Dashboard</h1>
+    <p>Connect to your ESP32-S3 receiver via HTTP and display live sensor readings.</p>
+  </header>
+
+  <main>
+    <section class="controls">
+      <input 
+        type="text" 
+        id="receiverIp" 
+        placeholder="Enter receiver IP (e.g., 192.168.1.100)" 
+        value="192.168.1.100"
+      />
+      <button id="connectButton">Connect</button>
+      <span id="status">Disconnected</span>
+    </section>
+
+    <section class="cards">
+      <article class="card">
+        <h2>Temperature</h2>
+        <p id="temperature">-- °C</p>
+      </article>
+      <article class="card">
+        <h2>Pressure</h2>
+        <p id="pressure">-- hPa</p>
+      </article>
+      <article class="card">
+        <h2>Humidity</h2>
+        <p id="humidity">-- %</p>
+      </article>
+      <article class="card">
+        <h2>Gas Resistance</h2>
+        <p id="gas">-- Ω</p>
+      </article>
+      <article class="card">
+        <h2>Magnetic Field</h2>
+        <p id="magnetic">-- µT</p>
+      </article>
+    </section>
+
+    <section class="log-section">
+      <h2>Connection Log</h2>
+      <pre id="log">Ready to connect. Enter the receiver IP address and click Connect.</pre>
+    </section>
+  </main>
+
+  <script>
+    const connectButton = document.getElementById('connectButton');
+    const receiverIpInput = document.getElementById('receiverIp');
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+
+    const fields = {
+      temperature: document.getElementById('temperature'),
+      pressure: document.getElementById('pressure'),
+      humidity: document.getElementById('humidity'),
+      gas: document.getElementById('gas'),
+      magnetic: document.getElementById('magnetic')
+    };
+
+    let isConnected = false;
+    let fetchInterval;
+    let receiverUrl;
+
+    connectButton.addEventListener('click', () => {
+      const ip = receiverIpInput.value.trim();
+      if (!ip) {
+        log('Please enter a valid IP address');
+        return;
+      }
+      receiverUrl = `http://${ip}`;
+      startFetching();
+    });
+
+    function startFetching() {
+      isConnected = true;
+      statusEl.textContent = 'Connecting...';
+      log(`Connecting to ${receiverUrl}...`);
+
+      fetchData();
+      fetchInterval = setInterval(fetchData, 2000);
+    }
+
+    async function fetchData() {
+      try {
+        const response = await fetch(`${receiverUrl}/api/sensor-data`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        updateDashboard(data);
+        if (statusEl.textContent !== 'Connected') {
+          statusEl.textContent = 'Connected';
+          statusEl.classList.add('connected');
+          log('Connected to receiver!');
+        }
+      } catch (error) {
+        if (isConnected) {
+          statusEl.textContent = 'Connection Error';
+          statusEl.classList.remove('connected');
+          log(`Error: ${error.message}`);
+          isConnected = false;
+          clearInterval(fetchInterval);
+        }
+      }
+    }
+
+    function updateDashboard(data) {
+      if (data.temperature !== undefined) {
+        fields.temperature.textContent = `${data.temperature.toFixed(1)} °C`;
+      }
+      if (data.pressure !== undefined) {
+        fields.pressure.textContent = `${data.pressure.toFixed(1)} hPa`;
+      }
+      if (data.humidity !== undefined) {
+        fields.humidity.textContent = `${data.humidity.toFixed(1)} %`;
+      }
+      if (data.gasResistance !== undefined) {
+        fields.gas.textContent = `${data.gasResistance.toFixed(0)} Ω`;
+      }
+      if (data.magnetic) {
+        const { x, y, z } = data.magnetic;
+        fields.magnetic.textContent = `X:${x.toFixed(1)} Y:${y.toFixed(1)} Z:${z.toFixed(1)}`;
+      }
+    }
+
+    function log(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      logEl.textContent += `[${timestamp}] ${message}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  </script>
+</body>
+</html>

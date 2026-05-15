@@ -44,7 +44,7 @@ The system creates an intelligent weather monitoring network capable of real-tim
 │                      BACKEND SERVER LAYER                       │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │ API Server & Data Processing                             │   │
-│  │ • Receives aggregated sensor data                         │   │
+│  │ • Receives aggregated sensor data                        │   │
 │  │ • Stores data in database                                │   │
 │  │ • Performs real-time weather monitoring                  │   │
 │  └──────────────────────────────────────────────────────────┘   │
@@ -52,19 +52,19 @@ The system creates an intelligent weather monitoring network capable of real-tim
                            ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │               MACHINE LEARNING & ANALYTICS LAYER                │
-│  ┌──────────────────────┐         ┌────────────────────────┐   │
-│  │ Data Analysis & ML   │         │ Prediction Engine      │   │
-│  │ • Pattern detection  │         │ • Weather forecasting  │   │
-│  │ • Anomaly detection  │         │ • Trend analysis       │   │
-│  │ • Statistical models │         │ • Risk prediction      │   │
-│  └──────────────────────┘         └────────────────────────┘   │
+│  ┌──────────────────────┐         ┌────────────────────────┐    │
+│  │ Data Analysis & ML   │         │ Prediction Engine      │    │
+│  │ • Pattern detection  │         │ • Weather forecasting  │    │
+│  │ • Anomaly detection  │         │ • Trend analysis       │    │
+│  │ • Statistical models │         │ • Risk prediction      │    │
+│  └──────────────────────┘         └────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                            ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │                   PRESENTATION/OUTPUT LAYER                     │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │   Dashboard  │  │    Web App    │  │  Alerts &    │           │
-│  │   (Real-time)│  │  (Analytics)  │  │ Notifications│           │
+│  │   Dashboard  │  │    Web App   │  │  Alerts &    │           │
+│  │   (Real-time)│  │  (Analytics) │  │ Notifications│           │
 │  └──────────────┘  └──────────────┘  └──────────────┘           │
 └─────────────────────────────────────────────────────────────────┘
 ```
