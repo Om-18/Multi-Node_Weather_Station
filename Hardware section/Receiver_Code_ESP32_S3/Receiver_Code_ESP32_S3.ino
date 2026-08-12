@@ -10,6 +10,9 @@ WebServer server(80);
 const char *ssid = "RG17";
 const char *password = "Starlord";
 
+#define LORA_RX 16
+#define LORA_TX 17
+
 // Latest sensor data
 struct SensorData {
   float temperature = 0.0;
@@ -25,7 +28,12 @@ struct SensorData {
 
 void setup() {
   Serial.begin(115200);
-  lora.begin(115200, SERIAL_8N1, 18, 17);
+  lora.begin(
+        115200,
+        SERIAL_8N1,
+        LORA_RX,
+        LORA_TX
+    );
 
   delay(2000);
 
