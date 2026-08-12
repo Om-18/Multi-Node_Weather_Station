@@ -66,12 +66,6 @@
         <p><span class="value" id="humidity">--</span><span class="unit">%</span></p>
       </article>
 
-      <article class="card gas">
-        <div class="card-icon">🫧</div>
-        <h2>Gas Resistance</h2>
-        <p><span class="value" id="gas">--</span><span class="unit">Ω</span></p>
-      </article>
-
       <article class="card mag">
         <div class="card-icon">🧲</div>
         <h2>Magnetic Field</h2>
@@ -99,10 +93,6 @@
           <h3>Pressure (hPa)</h3>
           <canvas id="chartPress"></canvas>
         </div>
-        <div class="chart-card">
-          <h3>Gas Resistance (Ω)</h3>
-          <canvas id="chartGas"></canvas>
-        </div>
       </div>
     </section>
 
@@ -127,7 +117,6 @@
       temperature : document.getElementById('temperature'),
       pressure    : document.getElementById('pressure'),
       humidity    : document.getElementById('humidity'),
-      gas         : document.getElementById('gas'),
       magX        : document.getElementById('magX'),
       magY        : document.getElementById('magY'),
       magZ        : document.getElementById('magZ'),
@@ -151,7 +140,6 @@
       temperature: [],
       pressure:    [],
       humidity:    [],
-      gas:         [],
     };
 
     function loadHistory() {
@@ -225,7 +213,6 @@
     const chartTemp  = new Chart(document.getElementById('chartTemp'),  { type:'line', data:{ labels:history.labels, datasets:[makeDataset('#f97316', history.temperature)] }, options: chartOpts('#f97316','°C')  });
     const chartHumid = new Chart(document.getElementById('chartHumid'), { type:'line', data:{ labels:history.labels, datasets:[makeDataset('#22d3ee', history.humidity)] }, options: chartOpts('#22d3ee','%')   });
     const chartPress = new Chart(document.getElementById('chartPress'), { type:'line', data:{ labels:history.labels, datasets:[makeDataset('#38bdf8', history.pressure)] }, options: chartOpts('#38bdf8','hPa') });
-    const chartGas   = new Chart(document.getElementById('chartGas'),   { type:'line', data:{ labels:history.labels, datasets:[makeDataset('#a78bfa', history.gas)] }, options: chartOpts('#a78bfa','Ω')   });
     
     // Update sample count on load
     meta.sampleCount.textContent = history.labels.length;
@@ -236,7 +223,6 @@
       history.temperature.push(data.temperature ?? null);
       history.pressure.push(data.pressure ?? null);
       history.humidity.push(data.humidity ?? null);
-      history.gas.push(data.gasResistance ?? null);
 
       // Trim if over limit
       if (history.labels.length > MAX_HISTORY) {
@@ -244,7 +230,6 @@
         history.temperature.shift();
         history.pressure.shift();
         history.humidity.shift();
-        history.gas.shift();
       }
       
       saveHistory();
@@ -256,13 +241,10 @@
       chartHumid.data.datasets[0].data = history.humidity;
       chartPress.data.labels = history.labels;
       chartPress.data.datasets[0].data = history.pressure;
-      chartGas.data.labels   = history.labels;
-      chartGas.data.datasets[0].data   = history.gas;
 
       chartTemp.update();
       chartHumid.update();
       chartPress.update();
-      chartGas.update();
 
       meta.sampleCount.textContent = history.labels.length;
     }
@@ -393,10 +375,6 @@
       if (data.humidity !== undefined) {
         const v = data.humidity.toFixed(1);
         if (fields.humidity.textContent !== v) { fields.humidity.textContent = v; flashEl(fields.humidity); }
-      }
-      if (data.gasResistance !== undefined) {
-        const v = data.gasResistance.toFixed(0);
-        if (fields.gas.textContent !== v) { fields.gas.textContent = v; flashEl(fields.gas); }
       }
 
       if (data.magnetic) {

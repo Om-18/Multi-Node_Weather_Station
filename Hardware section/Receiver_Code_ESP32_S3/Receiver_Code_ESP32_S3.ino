@@ -15,7 +15,6 @@ struct SensorData {
   float temperature = 0.0;
   float pressure = 0.0;
   float humidity = 0.0;
-  float gasResistance = 0.0;
   float magX = 0.0, magY = 0.0, magZ = 0.0;
   int rssi = 0;
   int snr = 0;
@@ -194,7 +193,6 @@ void parseSensorData(String data) {
   int tStart = data.indexOf("T:");
   int pStart = data.indexOf("P:");
   int hStart = data.indexOf("H:");
-  int gStart = data.indexOf("G:");
   int mStart = data.indexOf("M:");
 
   if (tStart != -1) {
@@ -213,12 +211,6 @@ void parseSensorData(String data) {
     int hEnd = data.indexOf("|", hStart);
     if (hEnd == -1) hEnd = data.length();
     sensorData.humidity = data.substring(hStart + 2, hEnd).toFloat();
-  }
-
-  if (gStart != -1) {
-    int gEnd = data.indexOf("|", gStart);
-    if (gEnd == -1) gEnd = data.length();
-    sensorData.gasResistance = data.substring(gStart + 2, gEnd).toFloat();
   }
 
   if (mStart != -1) {
@@ -240,8 +232,7 @@ void parseSensorData(String data) {
   Serial.println(">> Data parsed successfully!");
   Serial.println("   T=" + String(sensorData.temperature) +
                  " P=" + String(sensorData.pressure) +
-                 " H=" + String(sensorData.humidity) +
-                 " G=" + String(sensorData.gasResistance));
+                 " H=" + String(sensorData.humidity));
 }
 
 void addCORSHeaders() {
@@ -264,7 +255,6 @@ void handleSensorData() {
   doc["temperature"] = sensorData.temperature;
   doc["pressure"] = sensorData.pressure;
   doc["humidity"] = sensorData.humidity;
-  doc["gasResistance"] = sensorData.gasResistance;
 
   doc["magnetic"]["x"] = sensorData.magX;
   doc["magnetic"]["y"] = sensorData.magY;

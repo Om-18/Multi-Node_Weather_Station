@@ -235,9 +235,7 @@ main {
 .card.temp::after   { background: linear-gradient(90deg, #f97316, #ef4444); }
 .card.press::after  { background: linear-gradient(90deg, var(--accent), #0ea5e9); }
 .card.humid::after  { background: linear-gradient(90deg, #22d3ee, #06b6d4); }
-.card.gas::after    { background: linear-gradient(90deg, var(--purple), #c084fc); }
 .card.mag::after    { background: linear-gradient(90deg, #34d399, #10b981); }
-.card.accel::after  { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
 
 .card-icon {
   font-size: 1.6rem;
